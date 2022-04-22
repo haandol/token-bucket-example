@@ -38,10 +38,10 @@ func (t *TokenBucket) fill() {
 	}
 }
 
-func consume(t *TokenBucket, id int) {
+func consume(ch <-chan int, id int) {
 	for {
 		select {
-		case i := <-t.ch:
+		case i := <-ch:
 			fmt.Printf("[%s][%d]consume bucket: %d\n", time.Now().Format(time.RFC3339), id, i)
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -54,8 +54,8 @@ func main() {
 
 	done := make(chan bool)
 	go bucket.fill()
-	go consume(bucket, 1)
-	go consume(bucket, 2)
-	go consume(bucket, 3)
+	go consume(bucket.ch, 1)
+	go consume(bucket.ch, 2)
+	go consume(bucket.ch, 3)
 	<-done
 }
