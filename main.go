@@ -7,17 +7,29 @@ import (
 
 type TokenBucket struct {
 	maxTokens int
-	capacity  int
 	fillRate  int
+	ch        chan int
+}
+
+func NewTokenBucket(maxTokens, fillRate int) *TokenBucket {
+	return &TokenBucket{
+		maxTokens: maxTokens,
+		fillRate:  fillRate,
+		ch:        make(chan int, maxTokens),
+	}
+}
+
+func (t *TokenBucket) init(n int) {
+	for i := 0; i < n; i++ {
+		t.ch <- i
+	}
 }
 
 func (t *TokenBucket) fill() {
 	for {
-		if t.capacity < t.maxTokens {
-			fmt.Printf("[%s]fill bucket: %d\n", time.Now().Format(time.RFC3339), t.fillRate)
-			t.capacity += t.fillRate
-		} else {
-			fmt.Printf("[%s]bucket is full\n", time.Now().Format(time.RFC3339))
+		fmt.Printf("[%s]fill bucket: %d\n", time.Now().Format(time.RFC3339), t.fillRate)
+		for i := 0; i < t.fillRate && len(t.ch) < t.maxTokens; i++ {
+			t.ch <- i
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -25,22 +37,17 @@ func (t *TokenBucket) fill() {
 
 func consume(t *TokenBucket, id int) {
 	for {
-		if t.capacity > 0 {
-			fmt.Printf("[%s][%d]consume bucket: %d\n", time.Now().Format(time.RFC3339), id, t.capacity)
-			t.capacity -= 1
-		} else {
-			fmt.Printf("[%s][%d]bucket is empty\n", time.Now().Format(time.RFC3339), id)
+		select {
+		case i := <-t.ch:
+			fmt.Printf("[%s][%d]consume bucket: %d\n", time.Now().Format(time.RFC3339), id, i)
+			time.Sleep(100 * time.Millisecond)
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 
 func main() {
-	bucket := &TokenBucket{
-		maxTokens: 100,
-		capacity:  30,
-		fillRate:  6,
-	}
+	bucket := NewTokenBucket(100, 6)
+	bucket.init(30)
 
 	done := make(chan bool)
 	go bucket.fill()
