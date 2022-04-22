@@ -26,12 +26,15 @@ func (t *TokenBucket) init(n int) {
 }
 
 func (t *TokenBucket) fill() {
+	ticker := time.NewTicker(1 * time.Second)
 	for {
-		fmt.Printf("[%s]fill bucket: %d\n", time.Now().Format(time.RFC3339), t.fillRate)
-		for i := 0; i < t.fillRate && len(t.ch) < t.maxTokens; i++ {
-			t.ch <- i
+		select {
+		case <-ticker.C:
+			fmt.Printf("[%s]fill bucket: %d\n", time.Now().Format(time.RFC3339), t.fillRate)
+			for i := 0; i < t.fillRate && len(t.ch) < t.maxTokens; i++ {
+				t.ch <- i
+			}
 		}
-		time.Sleep(1 * time.Second)
 	}
 }
 
